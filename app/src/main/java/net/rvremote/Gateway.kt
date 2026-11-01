@@ -63,13 +63,13 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
         const val LIPPERT_ID = 0x0499
         const val LIPPERT_ID_ALT = 0x05C7
         const val NAME_PREFIX = "LCIRemote"
-        const val DEFAULT_TABLE = 0x08
         const val HEARTBEAT_MS = 5000L
         const val MOTOR_REPEAT_MS = 200L
         const val MOTOR_MAX_MS = 60_000L   // hard cap on one press-and-hold
         const val STALE_MS = 60_000L
         private const val PREFS = "gateway"
         private const val PREF_ADDR = "address"
+        private const val PREF_TABLE = "table"
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -85,7 +85,8 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
     private var writeChar: BluetoothGattCharacteristic? = null
     private var unlockChar: BluetoothGattCharacteristic? = null
     private var keyChar: BluetoothGattCharacteristic? = null
-    private var table = DEFAULT_TABLE
+    private var table = 0 // unknown until the gateway announces it (or saved from last time)
+    private val refusalsLogged = HashSet<Int>()
     private var ready = false
     private var wanted = false
     private var scanning = false
@@ -128,7 +129,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
 
     /** Forget the saved gateway (e.g. after a panel reset). */
     fun forget() {
-        prefs.edit().remove(PREF_ADDR).apply()
+        prefs.edit().remove(PREF_ADDR).remove(PREF_TABLE).apply()
         stop()
         devices.clear(); metadataLoaded = false
         main.post { listener.onDevicesChanged() }
@@ -372,7 +373,9 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             reconnectDelay = 5000L
             lastEventAt = System.currentTimeMillis()
             status("Connected")
-            requestDevices()
+            table = prefs.getInt(PREF_TABLE, 0)
+            // Never guess the table: a request to the wrong one jams the gateway.
+            if (table != 0) requestDevices() else log("waiting for gateway to announce its device table")
             main.postDelayed(heartbeat, HEARTBEAT_MS)
             false // not a GATT op; let the queue continue
         }
@@ -384,7 +387,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             if (System.currentTimeMillis() - lastEventAt > STALE_MS) {
                 gatt?.disconnect(); dropLink("no data for ${STALE_MS / 1000}s"); return
             }
-            if (pendingMetadata.isEmpty()) requestDevices()
+            if (table != 0 && pendingMetadata.isEmpty()) requestDevices()
             main.postDelayed(this, HEARTBEAT_MS)
         }
     }
@@ -415,6 +418,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             is Event.GatewayInfo -> {
                 if (e.table != 0 && e.table != table) {
                     table = e.table; log("device table $table, ${e.deviceCount} devices")
+                    prefs.edit().putInt(PREF_TABLE, table).apply()
                     requestDevices()
                 }
                 return false
@@ -452,8 +456,9 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             is Event.CommandFailed -> {
                 val wasMeta = pendingMetadata.remove(e.cmdId)
                 val wasList = pendingGetDevices.remove(e.cmdId) != null
-                log("command ${e.cmdId} refused, code 0x%02X%s".format(e.code,
-                    if (wasMeta) " (names)" else if (wasList) " (device list)" else ""))
+                if (wasMeta || wasList || refusalsLogged.add(e.cmdId))
+                    log("command ${e.cmdId} refused, code 0x%02X%s".format(e.code,
+                        if (wasMeta) " (names)" else if (wasList) " (device list)" else ""))
                 if (wasMeta) main.postDelayed({ if (ready && !metadataLoaded && pendingMetadata.isEmpty()) requestMetadata() }, 10_000)
                 return false
             }
@@ -464,6 +469,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
 
 
     private fun requestDevices() {
+        if (table == 0) return
         val c = cmd.getDevices(table)
         val id = (c[0].toInt() and 0xFF) or ((c[1].toInt() and 0xFF) shl 8)
         pendingGetDevices[id] = table
