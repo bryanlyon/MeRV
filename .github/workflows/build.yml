@@ -22,8 +22,26 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
+      - name: Load the permanent signing key from repo secrets
+        env:
+          KS_B64: ${{ secrets.MERV_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            printf '%s' "$KS_B64" | base64 -d > "$RUNNER_TEMP/merv.keystore"
+            echo "MERV_KEYSTORE=$RUNNER_TEMP/merv.keystore" >> "$GITHUB_ENV"
+            echo "Signing with the permanent key."
+          else
+            echo "::warning::Signing secrets not set; this build uses a one-off key."
+          fi
+
       - name: Build debug APK
+        env:
+          MERV_KEYSTORE_PASSWORD: ${{ secrets.MERV_KEYSTORE_PASSWORD }}
         run: gradle --no-daemon assembleDebug
+
+      - name: Remove the decoded key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/merv.keystore"
 
       - uses: actions/upload-artifact@v4
         with:
