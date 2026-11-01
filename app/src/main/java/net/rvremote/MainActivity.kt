@@ -292,10 +292,10 @@ class MainActivity : Activity(), Gateway.Listener {
 
         val switches = all.filter { (it.kind == Device.Kind.RELAY || it.kind == Device.Kind.DIMMER) && it.function != 323 }
         val (lights, systems) = switches.partition { FunctionNames.isLight(it.function) }
+        // Controls in order: lights, awning, then everything else.
         if (lights.isNotEmpty()) content.addView(tileCard("LIGHTS", lights.sortedBy { it.name }))
-        if (systems.isNotEmpty()) content.addView(tileCard("SYSTEMS", systems.sortedBy { it.name }))
-
         all.filter { it.kind == Device.Kind.MOTOR }.sortedBy { it.name }.forEach { content.addView(motorCard(it)) }
+        if (systems.isNotEmpty()) content.addView(tileCard("SYSTEMS", systems.sortedBy { it.name }))
     }
 
     // ---- battery -----------------------------------------------------------
