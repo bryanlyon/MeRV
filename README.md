@@ -49,8 +49,8 @@ is capped at 60 seconds. Watch the awning while it moves.
 
 ## When something doesn't work
 
-Menu ▸ **Debug log** shows what the app and panel are saying. Menu ▸ **Copy log**
-puts it on the clipboard so you can send it back for a fix.
+Menu ▸ **Copy debug log** puts a record of what the app and panel said on the
+clipboard, so you can paste it into a bug report.
 
 **Forget this RV** clears the saved panel. Also remove it in Android's Bluetooth
 settings, then press CONNECT again to re-pair.

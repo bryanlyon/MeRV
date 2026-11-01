@@ -162,12 +162,12 @@ class MainActivity : Activity(), Gateway.Listener {
 
     private fun showMenu(anchor: View) {
         PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, "Debug log")
+            menu.add(0, 1, 0, "Copy debug log")
             menu.add(0, 2, 0, "Forget this RV")
             menu.add(0, 3, 0, "About & credits")
             setOnMenuItemClickListener {
                 when (it.itemId) {
-                    1 -> showLog()
+                    1 -> copyLog()
                     3 -> showAbout()
                     2 -> AlertDialog.Builder(this@MainActivity)
                         .setMessage("Forget this RV? You'll need to press CONNECT on the panel to pair again. " +
@@ -181,24 +181,10 @@ class MainActivity : Activity(), Gateway.Listener {
         }
     }
 
-    private fun showLog() {
-        val text = TextView(this).apply {
-            textSize = 11f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true)
-            setPadding(px(16), px(8), px(16), px(8))
-            this.text = logLines.joinToString("\n")
-        }
-        val scroll = ScrollView(this).apply { addView(text) }
-        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
-        AlertDialog.Builder(this)
-            .setTitle("Debug log")
-            .setView(scroll)
-            .setPositiveButton("Copy") { _, _ ->
-                val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("MeRV log", logLines.joinToString("\n")))
-                Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Close", null)
-            .show()
+    private fun copyLog() {
+        val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("MeRV log", logLines.joinToString("\n")))
+        Toast.makeText(this, "Debug log copied (${logLines.size} lines)", Toast.LENGTH_SHORT).show()
     }
 
     private fun showAbout() {
