@@ -93,6 +93,8 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
     private var reconnectDelay = 5000L
     private var lastEventAt = 0L
     private val pendingMetadata = HashSet<Int>()
+    private val pendingGetDevices = HashMap<Int, Int>() // cmdId -> table
+    private val seenTypes = HashSet<Int>()
     private var metadataLoaded = false
 
     // ---- logging / status --------------------------------------------------
@@ -370,7 +372,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             reconnectDelay = 5000L
             lastEventAt = System.currentTimeMillis()
             status("Connected")
-            send(cmd.getDevices(table))
+            requestDevices()
             main.postDelayed(heartbeat, HEARTBEAT_MS)
             false // not a GATT op; let the queue continue
         }
@@ -382,7 +384,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             if (System.currentTimeMillis() - lastEventAt > STALE_MS) {
                 gatt?.disconnect(); dropLink("no data for ${STALE_MS / 1000}s"); return
             }
-            send(cmd.getDevices(table))
+            if (pendingMetadata.isEmpty()) requestDevices()
             main.postDelayed(this, HEARTBEAT_MS)
         }
     }
@@ -396,7 +398,11 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
         main.post {
             lastEventAt = System.currentTimeMillis()
             var changed = false
-            for (f in frames) for (e in Event.parse(f)) changed = applyEvent(e, f) || changed
+            for (f in frames) {
+                val t = f[0].toInt() and 0xFF
+                if (seenTypes.add(t)) log("first event 0x%02X: %s".format(t, hex(f)))
+                for (e in Event.parse(f)) changed = applyEvent(e, f) || changed
+            }
             if (changed) listener.onDevicesChanged()
         }
     }
@@ -407,8 +413,10 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
     private fun applyEvent(e: Event, frame: ByteArray): Boolean {
         when (e) {
             is Event.GatewayInfo -> {
-                if (e.table != 0 && e.table != table) { table = e.table; log("device table $table") }
-                if (!metadataLoaded && pendingMetadata.isEmpty()) requestMetadata()
+                if (e.table != 0 && e.table != table) {
+                    table = e.table; log("device table $table, ${e.deviceCount} devices")
+                    requestDevices()
+                }
                 return false
             }
             is Event.RvStatus -> { listener.onBattery(e.volts); return false }
@@ -434,6 +442,19 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             }
             is Event.CommandDone -> {
                 if (pendingMetadata.remove(e.cmdId)) { metadataLoaded = true; log("device names loaded") }
+                val t = pendingGetDevices.remove(e.cmdId)
+                if (t != null) {
+                    log("device list done (table $t)")
+                    if (t == table && !metadataLoaded && pendingMetadata.isEmpty()) requestMetadata()
+                }
+                return false
+            }
+            is Event.CommandFailed -> {
+                val wasMeta = pendingMetadata.remove(e.cmdId)
+                val wasList = pendingGetDevices.remove(e.cmdId) != null
+                log("command ${e.cmdId} refused, code 0x%02X%s".format(e.code,
+                    if (wasMeta) " (names)" else if (wasList) " (device list)" else ""))
+                if (wasMeta) main.postDelayed({ if (ready && !metadataLoaded && pendingMetadata.isEmpty()) requestMetadata() }, 10_000)
                 return false
             }
             is Event.Metadata -> return false
@@ -442,13 +463,22 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
     }
 
 
+    private fun requestDevices() {
+        val c = cmd.getDevices(table)
+        val id = (c[0].toInt() and 0xFF) or ((c[1].toInt() and 0xFF) shl 8)
+        pendingGetDevices[id] = table
+        if (pendingGetDevices.size > 20) pendingGetDevices.remove(pendingGetDevices.keys.first())
+        send(c)
+    }
+
     private fun requestMetadata() {
+        log("asking for device names (table $table)")
         val c = cmd.getDevicesMetadata(table)
         val id = (c[0].toInt() and 0xFF) or ((c[1].toInt() and 0xFF) shl 8)
         pendingMetadata.add(id)
         send(c)
         // If the gateway never confirms, allow another try on a later GatewayInfo.
-        main.postDelayed({ if (pendingMetadata.remove(id)) log("metadata request timed out") }, 10_000)
+        main.postDelayed({ if (pendingMetadata.remove(id)) log("name request got no answer; will retry") }, 10_000)
     }
 
     // ---- commands out ------------------------------------------------------

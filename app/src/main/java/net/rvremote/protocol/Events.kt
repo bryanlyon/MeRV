@@ -15,6 +15,7 @@ sealed class Event {
     }
     data class CommandDone(val cmdId: Int) : Event()
     class CommandPart(val cmdId: Int, val frame: ByteArray) : Event()
+    data class CommandFailed(val cmdId: Int, val code: Int) : Event()
 
     companion object {
         private fun u(b: ByteArray, i: Int) = b[i].toInt() and 0xFF
@@ -64,6 +65,7 @@ sealed class Event {
             return when (u(f, 3)) {
                 0x81 -> listOf(CommandDone(cmdId))
                 0x01 -> listOf(CommandPart(cmdId, f))
+                0x02, 0x82 -> listOf(CommandFailed(cmdId, if (f.size >= 5) u(f, 4) else -1))
                 else -> emptyList()
             }
         }
