@@ -17,7 +17,7 @@
     <application
         android:label="MeRV"
         android:icon="@android:drawable/ic_menu_manage"
-        android:theme="@android:style/Theme.DeviceDefault"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"

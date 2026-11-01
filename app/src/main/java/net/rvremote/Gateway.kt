@@ -29,7 +29,21 @@ data class Device(
     var motorStatus: Int = 0,
     var online: Boolean = true,
     var fault: Int = 0,
+    var pendingOn: Boolean? = null,
+    var pendingUntil: Long = 0,
 ) {
+    /** What the UI should show: the user's latest choice until the panel confirms it. */
+    val shownOn: Boolean get() = pendingOn ?: on
+
+    /** Accept a reported state, unless it contradicts a fresh user command. */
+    fun report(reported: Boolean) {
+        val p = pendingOn
+        if (p != null) {
+            if (reported == p || System.currentTimeMillis() > pendingUntil) pendingOn = null
+            else return
+        }
+        on = reported
+    }
     enum class Kind { UNKNOWN, RELAY, DIMMER, TANK, MOTOR }
     val key get() = (table shl 8) or id
 }
@@ -426,14 +440,14 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             is Event.RvStatus -> { listener.onBattery(e.volts); return false }
             is Event.Relay -> dev(e.table, e.device).apply {
                 if (kind == Device.Kind.UNKNOWN || kind == Device.Kind.RELAY) kind = Device.Kind.RELAY
-                on = e.on
+                report(e.on)
                 if (e.faultCode != fault) {
                     fault = e.faultCode
                     if (fault != 0) log("$name reports stored code $fault")
                 }
             }
             is Event.Dimmer -> dev(e.table, e.device).apply {
-                kind = Device.Kind.DIMMER; on = e.on; brightness = e.brightness
+                kind = Device.Kind.DIMMER; report(e.on); if (e.brightness > 0) brightness = e.brightness
             }
             is Event.Tank -> dev(e.table, e.device).apply { kind = Device.Kind.TANK; percent = e.percent }
             is Event.Motor -> dev(e.table, e.device).apply { kind = Device.Kind.MOTOR; motorStatus = e.status }
@@ -500,7 +514,12 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
         enqueue { writeChar(c, wire, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) }
     }
 
+    val isReady get() = ready
+
     fun setOn(d: Device, on: Boolean) {
+        d.pendingOn = on
+        d.pendingUntil = System.currentTimeMillis() + 3000
+        listener.onDevicesChanged()
         when (d.kind) {
             Device.Kind.DIMMER -> send(cmd.dimmable(d.table, d.id, if (on) d.brightness.takeIf { it > 0 } ?: 255 else 0))
             else -> send(cmd.switch(d.table, d.id, on))
