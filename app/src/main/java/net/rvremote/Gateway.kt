@@ -426,7 +426,11 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
             is Event.RvStatus -> { listener.onBattery(e.volts); return false }
             is Event.Relay -> dev(e.table, e.device).apply {
                 if (kind == Device.Kind.UNKNOWN || kind == Device.Kind.RELAY) kind = Device.Kind.RELAY
-                on = e.on; fault = e.faultCode
+                on = e.on
+                if (e.faultCode != fault) {
+                    fault = e.faultCode
+                    if (fault != 0) log("$name reports stored code $fault")
+                }
             }
             is Event.Dimmer -> dev(e.table, e.device).apply {
                 kind = Device.Kind.DIMMER; on = e.on; brightness = e.brightness

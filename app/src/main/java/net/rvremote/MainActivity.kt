@@ -217,7 +217,7 @@ class MainActivity : Activity(), Gateway.Listener {
         addView(label, LinearLayout.LayoutParams(0, -2, 1f))
         addView(sw)
         val update = { x: Device ->
-            label.text = x.name + if (x.fault != 0) "  ⚠ fault ${x.fault}" else ""
+            label.text = x.name
             label.setTextColor(if (x.online) Color.WHITE else Color.GRAY)
             sw.isChecked = x.on
             sw.isEnabled = x.online
