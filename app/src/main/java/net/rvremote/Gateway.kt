@@ -97,7 +97,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
 
     // ---- logging / status --------------------------------------------------
 
-    private fun log(s: String) = main.post { listener.onLog(s) }
+    private fun log(s: String) { main.post { listener.onLog(s) } }
     private fun status(s: String) { log("» $s"); main.post { listener.onStatus(s) } }
     private fun hex(b: ByteArray) = b.joinToString(" ") { "%02X".format(it) }
 
@@ -203,8 +203,9 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
         }
     }
 
-    private fun remember(dev: BluetoothDevice) =
+    private fun remember(dev: BluetoothDevice) {
         prefs.edit().putString(PREF_ADDR, dev.address).apply()
+    }
 
     private val bondReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
@@ -243,7 +244,7 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
     private var opBusy = false
     private val opTimeout = Runnable { log("gatt op timed out"); opDone() }
 
-    private fun enqueue(op: () -> Boolean) = main.post { ops.add(op); pump() }
+    private fun enqueue(op: () -> Boolean) { main.post { ops.add(op); pump() } }
 
     private fun pump() {
         if (opBusy) return
@@ -253,10 +254,12 @@ class Gateway(private val ctx: Context, private val listener: Listener) {
         }
     }
 
-    private fun opDone() = main.post {
-        main.removeCallbacks(opTimeout)
-        opBusy = false
-        pump()
+    private fun opDone() {
+        main.post {
+            main.removeCallbacks(opTimeout)
+            opBusy = false
+            pump()
+        }
     }
 
     @Suppress("DEPRECATION")
