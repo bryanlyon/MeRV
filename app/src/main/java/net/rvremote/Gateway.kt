@@ -1,3 +1,9 @@
+// Connection and unlock sequence adapted from ble-plugin-bridge by Pete Hurth
+// (https://github.com/phurth), plugins/onecontrol/OneControlDevicePlugin.kt:
+//   https://github.com/phurth/ble-plugin-bridge/blob/abb1aef/app/src/main/java/com/blemqttbridge/plugins/onecontrol/OneControlDevicePlugin.kt
+// MIT License, Copyright (c) 2025 phurth. Full text in LICENSE.
+// Protocol timing and command ordering follow ha-onecontrol's technical spec:
+//   https://github.com/phurth/ha-onecontrol/blob/0235555/docs/TECH_SPEC.md
 package net.rvremote
 
 import android.annotation.SuppressLint

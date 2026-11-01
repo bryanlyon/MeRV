@@ -57,6 +57,49 @@ settings, then press CONNECT again to re-pair.
 
 ## Credits
 
-The protocol work (unlock, framing, commands, event formats) is ported from
-Pete Hurth's MIT-licensed [ha-onecontrol](https://github.com/phurth/ha-onecontrol)
-and [ble-plugin-bridge](https://github.com/phurth/ble-plugin-bridge). See LICENSE.
+MeRV exists because of the reverse-engineering work of **Pete Hurth**
+([@phurth](https://github.com/phurth)). He worked out how the Lippert OneControl
+Bluetooth gateway authenticates and talks, and published it as open source under
+the MIT License. MeRV is a small Android front end built on that work.
+
+### [phurth/ha-onecontrol](https://github.com/phurth/ha-onecontrol)
+
+Home Assistant integration for Lippert/LCI OneControl BLE gateways.
+MIT License, Copyright (c) 2026 Pete Hurth. Ported from commit
+[`0235555`](https://github.com/phurth/ha-onecontrol/commit/0235555).
+
+Used in MeRV (`app/src/main/java/net/rvremote/protocol/`):
+- Gateway unlock math, including the masked key-schedule constants (`Tea.kt`,
+  from `protocol/tea.py`)
+- CRC8 checksum and COBS frame encoding/decoding (`Framing.kt`, from
+  `protocol/crc8.py` and `protocol/cobs.py`)
+- Command formats for device lists, names, switches, dimmers and the awning
+  motor (`Commands.kt`, from `protocol/commands.py`)
+- Event formats for battery, relays, dimmers, tanks, motors and device names
+  (`Events.kt`, from `protocol/events.py`)
+- The table of 445 device names (`FunctionNames.kt`, generated from
+  `protocol/function_names.py`)
+- Protocol behavior documented in its
+  [technical spec](https://github.com/phurth/ha-onecontrol/blob/main/docs/TECH_SPEC.md):
+  press-and-hold awning control, the 200 ms repeat, keep-alive timing, and
+  asking for device names only after the device list completes
+
+### [phurth/ble-plugin-bridge](https://github.com/phurth/ble-plugin-bridge)
+
+Android app bridging RV Bluetooth devices to Home Assistant over MQTT.
+MIT License, Copyright (c) 2025 phurth. Referenced at commit
+[`abb1aef`](https://github.com/phurth/ble-plugin-bridge/commit/abb1aef).
+
+Used in MeRV (`app/src/main/java/net/rvremote/Gateway.kt`):
+- The Android connection sequence for OneControl gateways: service discovery,
+  MTU request, reading the unlock challenge, writing the key without response,
+  confirming "Unlocked", then enabling notifications
+- Push-button pairing detection from the gateway's advertisement
+- Writing all commands without response
+
+Both licenses are reproduced in full in [LICENSE](LICENSE) and inside the app
+under ⋮ ▸ About & credits.
+
+If you're using OneControl with Home Assistant, use
+[ha-onecontrol](https://github.com/phurth/ha-onecontrol) directly; it covers far
+more hardware than this app.

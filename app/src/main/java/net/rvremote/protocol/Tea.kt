@@ -1,4 +1,8 @@
-// Ported from ha-onecontrol (MIT License, (c) 2026 Pete Hurth). See LICENSE.
+// Ported from ha-onecontrol by Pete Hurth (https://github.com/phurth)
+// https://github.com/phurth/ha-onecontrol
+// MIT License, Copyright (c) 2026 Pete Hurth. Full text in LICENSE.
+// Source:
+//   https://github.com/phurth/ha-onecontrol/blob/0235555/custom_components/ha_onecontrol/protocol/tea.py
 package net.rvremote.protocol
 
 import java.util.Base64

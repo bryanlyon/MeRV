@@ -1,9 +1,18 @@
-RV Remote
+MeRV
 
-This app's protocol code (app/src/main/java/net/rvremote/protocol/) is ported from
-ha-onecontrol and ble-plugin-bridge by Pete Hurth (phurth), used under the MIT License:
-  https://github.com/phurth/ha-onecontrol
-  https://github.com/phurth/ble-plugin-bridge
+MeRV is built on the work of Pete Hurth (https://github.com/phurth), used under
+the MIT License. Both licenses are reproduced in full below.
+
+ha-onecontrol (https://github.com/phurth/ha-onecontrol), ported from commit 0235555:
+  app/src/main/java/net/rvremote/protocol/Tea.kt          (protocol/tea.py)
+  app/src/main/java/net/rvremote/protocol/Framing.kt      (protocol/crc8.py, protocol/cobs.py)
+  app/src/main/java/net/rvremote/protocol/Commands.kt     (protocol/commands.py)
+  app/src/main/java/net/rvremote/protocol/Events.kt       (protocol/events.py)
+  app/src/main/java/net/rvremote/protocol/FunctionNames.kt (protocol/function_names.py)
+
+ble-plugin-bridge (https://github.com/phurth/ble-plugin-bridge), referenced at commit abb1aef:
+  app/src/main/java/net/rvremote/Gateway.kt               (connection and unlock sequence from
+                                                           plugins/onecontrol/OneControlDevicePlugin.kt)
 
 ========================================================================
 MIT License

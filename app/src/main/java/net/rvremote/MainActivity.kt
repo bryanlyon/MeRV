@@ -164,9 +164,11 @@ class MainActivity : Activity(), Gateway.Listener {
         PopupMenu(this, anchor).apply {
             menu.add(0, 1, 0, "Debug log")
             menu.add(0, 2, 0, "Forget this RV")
+            menu.add(0, 3, 0, "About & credits")
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> showLog()
+                    3 -> showAbout()
                     2 -> AlertDialog.Builder(this@MainActivity)
                         .setMessage("Forget this RV? You'll need to press CONNECT on the panel to pair again. " +
                             "Also remove it under Android's Bluetooth settings.")
@@ -196,6 +198,58 @@ class MainActivity : Activity(), Gateway.Listener {
                 Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Close", null)
+            .show()
+    }
+
+    private fun showAbout() {
+        val version = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (_: Exception) { "?" }
+        val text = TextView(this).apply {
+            textSize = 15f; setLineSpacing(0f, 1.2f)
+            setPadding(px(22), px(8), px(22), px(8))
+            autoLinkMask = android.text.util.Linkify.WEB_URLS
+            linksClickable = true
+            this.text = """MeRV $version
+A local Bluetooth remote for Lippert OneControl / WeRV panels.
+
+MeRV is built on the reverse-engineering work of Pete Hurth (phurth), who worked out how the OneControl gateway authenticates and communicates and published it as open source under the MIT License.
+
+ha-onecontrol
+https://github.com/phurth/ha-onecontrol
+Copyright (c) 2026 Pete Hurth, MIT License.
+Source of MeRV's unlock math, message framing, command and event formats, and device-name table.
+
+ble-plugin-bridge
+https://github.com/phurth/ble-plugin-bridge
+Copyright (c) 2025 phurth, MIT License.
+Source of MeRV's Android connection, pairing and unlock sequence.
+
+MeRV source:
+https://github.com/bryanlyon/MeRV"""
+        }
+        AlertDialog.Builder(this)
+            .setTitle("About & credits")
+            .setView(ScrollView(this).apply { addView(text) })
+            .setPositiveButton("Close", null)
+            .setNeutralButton("Full license") { _, _ -> showLicense() }
+            .show()
+    }
+
+    private fun showLicense() {
+        val body = try {
+            assets.open("LICENSE.txt").bufferedReader().use { it.readText() }
+        } catch (_: Exception) { "License file missing from this build." }
+        val text = TextView(this).apply {
+            textSize = 11f; typeface = Typeface.MONOSPACE; setTextIsSelectable(true)
+            setPadding(px(16), px(8), px(16), px(8))
+            autoLinkMask = android.text.util.Linkify.WEB_URLS
+            this.text = body
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Licenses")
+            .setView(ScrollView(this).apply { addView(text) })
+            .setPositiveButton("Close", null)
             .show()
     }
 

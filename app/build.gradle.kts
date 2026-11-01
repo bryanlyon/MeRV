@@ -40,7 +40,22 @@ android {
     lint {
         abortOnError = false
     }
+
+    // The app ships the repo's LICENSE (with full upstream credits) as an asset.
+    sourceSets {
+        getByName("main") {
+            assets.srcDir(layout.buildDirectory.dir("generated/legal"))
+        }
+    }
 }
+
+// Copy LICENSE into the app at build time so the in-app text can't drift from the repo.
+val copyLegal = tasks.register<Copy>("copyLegal") {
+    from(rootProject.file("LICENSE"))
+    into(layout.buildDirectory.dir("generated/legal"))
+    rename { "LICENSE.txt" }
+}
+tasks.named("preBuild") { dependsOn(copyLegal) }
 
 // No libraries beyond the Kotlin standard library.
 dependencies {}
